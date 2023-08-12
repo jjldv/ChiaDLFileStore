@@ -115,7 +115,6 @@ class ChiaDLFileStore extends EventEmitter {
                     return;
                 }
                 while (activeConnections >= concurrencyLimit) {
-                    console.log('Waiting for active connections to drop below ' + concurrencyLimit);
                     await new Promise(resolve => setTimeout(resolve, 100));
                     if (this.cancelFlag) {
                         return;
