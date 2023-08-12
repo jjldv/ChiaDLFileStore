@@ -124,12 +124,12 @@ class ChiaDLFileStore extends EventEmitter {
 
                 try {
                     const storedFile = await this.getKeValue(idStore, fileName, root.root_hash);
-                    activeConnections--;
                     if (storedFile.success) {
                         infoFileParsed = JSON.parse(this.hexToString(storedFile.value));
                         fileContentChunks[infoFileParsed.partNumber - 1] = infoFileParsed.hexData;
                         this.emit('logGetFile', fileName, infoFileParsed.partNumber, infoFileParsed.hexData, 'Get Part file...' + fileContentChunks.filter(chunk => chunk !== null).length + '/' + totalParts);
                     }
+                    activeConnections--;
                 } catch (error) {
                     activeConnections--;
                 }
