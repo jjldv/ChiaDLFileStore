@@ -1,6 +1,6 @@
 {
     "name": "chia-dl-file-store",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "main": "ChiaDLFileStore.js",
     "description": "A package for managing file storage in Chia DataLayer.",
     "keywords": ["chia", "DataLayer", "file storage"],
