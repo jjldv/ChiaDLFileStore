@@ -4,7 +4,7 @@ const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 const EventEmitter = require('events');
-const { Worker, isMainThread, parentPort } = require('worker_threads');
+const { Worker } = require('worker_threads');
 
 
 class ChiaDLFileStore extends EventEmitter {
@@ -17,7 +17,7 @@ class ChiaDLFileStore extends EventEmitter {
             keyPath: this.getDefaultKeyPath(),
             host: 'localhost',
             port: 8562,
-            chunkSize: 5000000,//5MB
+            chunkSize: 2000000,//2MB
             requestOptions: {
                 method: 'POST',
                 headers: {
