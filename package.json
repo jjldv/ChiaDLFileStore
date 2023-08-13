@@ -1,0 +1,26 @@
+{
+    "name": "chia-dl-file-store",
+    "version": "1.0.0",
+    "description": "A package for managing file storage in Chia DataLayer.",
+    "keywords": ["chia", "DataLayer", "file storage"],
+    "author": "MrDennis",
+    "license": "MIT",
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/jjldv/ChiaDLFileStore.git"
+    },
+    "bugs": {
+      "url": "https://github.com/jjldv/ChiaDLFileStore/issues"
+    },
+    "homepage": "https://github.com/jjldv/ChiaDLFileStore",
+    "dependencies": {
+      "https": "^1.0.0",
+      "fs": "^0.0.1",
+      "os": "^0.1.1",
+      "path": "^0.12.7",
+      "crypto": "^1.0.1",
+      "events": "^4.0.1",
+      "worker_threads": "^16.13.0"
+    }
+  }
+  

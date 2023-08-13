@@ -5,7 +5,7 @@ ChiaDLFileStore is a Node.js package that provides functionality for interacting
 ## Installation
 
 ```bash
-npm install ChiaDLFileStore
+npm install chia-dl-file-store
 ```
 
 ## Usage
