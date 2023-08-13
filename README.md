@@ -133,7 +133,7 @@ async function getFileListExample() {
     const fileStore = new ChiaDLFileStore();
     
     try {
-        const idStore = '2feb86ae33d70bfec5662a6ddac515542002e8afddffb91a06aeae9d5e68e07d';
+        const idStore = 'STORE_ID';
         const result = await fileStore.getFileList(idStore);
         if(!result.success) {
             return;
@@ -163,7 +163,7 @@ async function insertFileExample() {
     });
 
     try {
-        const idStore = '2feb86ae33d70bfec5662a6ddac515542002e8afddffb91a06aeae9d5e68e07d';
+        const idStore = 'STORE_ID';
         const filePath = "PathTofile";
         const fee = 100;
         const result = await fileStore.insertFile(idStore, filePath, fee);
@@ -194,7 +194,7 @@ async function getFileExample() {
 
     });
     try {
-        const idStore = '2feb86ae33d70bfec5662a6ddac515542002e8afddffb91a06aeae9d5e68e07d';
+        const idStore = 'STORE_ID';
         const fileName = 'YOUR_FILE_NAME_HERE';
         const result = await fileStore.getFile(idStore, fileName);
 
@@ -220,8 +220,8 @@ async function deleteFileExample() {
     const fileStore = new ChiaDLFileStore();
 
     try {
-        const idStore = '2feb86ae33d70bfec5662a6ddac515542002e8afddffb91a06aeae9d5e68e07d';
-        const fileName = 'demod2.png';
+        const idStore = 'STORE_ID';
+        const fileName = 'FILENAME';
         const result = await fileStore.deleteFile(idStore, fileName,100);
         
         if (result.success === true) {
