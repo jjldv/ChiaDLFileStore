@@ -11,7 +11,7 @@ npm install chia-dl-file-store
 ## Usage
 
 ```javascript
-const ChiaDLFileStore = require('ChiaDLFileStore');
+const ChiaDLFileStore = require('chia-dl-file-store');
 
 // Create an instance of ChiaDLFileStore
 const fileStore = new ChiaDLFileStore();
@@ -124,10 +124,10 @@ fileStore.on('logInsertFile', (fileName, partNumber, message) => {
 
 ## Examples
 
-### Retrieve File List
+### Get File List
 
 ```javascript
-const ChiaDLFileStore = require('ChiaDLFileStore');
+const ChiaDLFileStore = require('chia-dl-file-store');
 
 async function getFileListExample() {
     const fileStore = new ChiaDLFileStore();
@@ -135,7 +135,12 @@ async function getFileListExample() {
     try {
         const idStore = '2feb86ae33d70bfec5662a6ddac515542002e8afddffb91a06aeae9d5e68e07d';
         const result = await fileStore.getFileList(idStore);
-        console.log(result);
+        if(!result.success) {
+            return;
+        }
+        for(const file of result.fileList) {
+            console.log("File name: ", file);
+        }
     } catch (error) {
         console.error('Error:', error.message);
     }
@@ -147,18 +152,26 @@ getFileListExample();
 ### Insert File
 
 ```javascript
-const ChiaDLFileStore = require('ChiaDLFileStore');
-const path = require('path');
+const ChiaDLFileStore = require('chia-dl-file-store');
 
 async function insertFileExample() {
     const fileStore = new ChiaDLFileStore();
-    
+
+
+    fileStore.on('logInsertFile', (fileName, partNumber, message) => {
+        console.log(`log ${partNumber} of ${fileName}: ${message}`);
+    });
+
     try {
         const idStore = '2feb86ae33d70bfec5662a6ddac515542002e8afddffb91a06aeae9d5e68e07d';
-        const filePath = "/PATH-TO-FILE.ANYTHING";
+        const filePath = "PathTofile";
         const fee = 100;
         const result = await fileStore.insertFile(idStore, filePath, fee);
-        console.log(result);
+       if(result.success) {
+           console.log('Success:', result.message);
+           return;
+       }
+       console.error('Error:', result.error);
     } catch (error) {
         console.error('Error:', error.message);
     }
@@ -167,14 +180,14 @@ async function insertFileExample() {
 insertFileExample();
 ```
 
-### Retrieve File
+### Get File
 
 ```javascript
-const ChiaDLFileStore = require('ChiaDLFileStore');
+const ChiaDLFileStore = require('chia-dl-file-store');
 const path = require('path');
 const fs = require('fs');
 
-async function retrieveFileExample() {
+async function getFileExample() {
     const fileStore = new ChiaDLFileStore();
 
     try {
@@ -194,7 +207,71 @@ async function retrieveFileExample() {
     }
 }
 
-retrieveFileExample();
+getFileExample();
+```
+### Delete File
+```
+const ChiaDLFileStore = require('chia-dl-file-store');
+
+async function deleteFileExample() {
+    const fileStore = new ChiaDLFileStore();
+
+    try {
+        const idStore = '2feb86ae33d70bfec5662a6ddac515542002e8afddffb91a06aeae9d5e68e07d';
+        const fileName = 'demod2.png';
+        const result = await fileStore.deleteFile(idStore, fileName,100);
+        
+        if (result.success === true) {
+            console.log('File deleted successfully');
+        } else {
+            console.error('Error deleting file:', result.error);
+        }
+    } catch (error) {
+        console.error('Error:', error.message);
+    }
+}
+deleteFileExample();
+
+```
+### Cancel Process insertFile / getFile 
+```
+const ChiaDLFileStore = require('chia-dl-file-store');
+
+async function cancelProcessExample() {
+    const fileStore = new ChiaDLFileStore();
+
+    try {
+        await fileStore.cancelProcess();
+        console.log('process cancelled');
+    } catch (error) {
+        console.error('Error:', error.message);
+    }
+}
+cancelProcessExample();
+
+```
+
+### Create Store
+```
+const ChiaDLFileStore = require('chia-dl-file-store');
+
+async function createDataStoreExample() {
+    const fileStore = new ChiaDLFileStore();
+
+    try {
+        const result = await fileStore.createDataStore(100);
+        if(result.success) {
+            console.log('Data store created with ID:', result.id);
+        }
+        else {  
+            console.error('Error:', result.error);
+        }
+    } catch (error) {
+        console.error('Error:', error.message);
+    }
+}
+createDataStoreExample();
+
 ```
 ## Usage Notes and Limitations
 

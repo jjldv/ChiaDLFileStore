@@ -50,7 +50,11 @@ class ChiaDLFileStore extends EventEmitter {
         return path.join(homeDir, '.chia', 'mainnet', 'config', 'ssl', 'data_layer', 'private_data_layer.key');
     }
     cancelProcess() {
-        this.cancelFlag = true;
+        if (!this.cancelFlag) {
+            this.cancelFlag = true;
+            return true;
+        }
+        return false;
     }
     async deleteFile(idStore, fileName, fee = 0) {
         try {
@@ -162,6 +166,7 @@ class ChiaDLFileStore extends EventEmitter {
         }
     }
     async getFile(idStore, fileName) {
+        this.cancelFlag = false;
         return new Promise(async (resolve, reject) => {
             try {
                 let storedFile = await this.getKeValue(idStore, fileName);
@@ -342,6 +347,7 @@ class ChiaDLFileStore extends EventEmitter {
         return result.root_history.pop();
     }
     async insertFile(idStore, filePath, fee = 0) {
+        this.cancelFlag = false;
         try {
             if (!fs.existsSync(filePath)) {
                 return { success: false, error: 'File not found :' + filePath };
@@ -422,7 +428,7 @@ class ChiaDLFileStore extends EventEmitter {
                         this.emit('logInsertFile', fileName, partNumber, 'Transaction confirmed...' + (totalParts - partNumber + 1) + '/' + totalParts);
                         partNumber--;
                         if (partNumber === 0) {
-                            return { success: true, error: 'File stored in data layer' };
+                            return { success: true, message: 'File stored in data layer' };
                         }
                     }
                     await this.sleep();
