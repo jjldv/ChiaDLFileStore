@@ -4,25 +4,27 @@ const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 const EventEmitter = require('events');
+const { Worker, isMainThread, parentPort } = require('worker_threads');
+
 
 class ChiaDLFileStore extends EventEmitter {
     constructor(config = null) {
         super();
         const defaultConfig = {
-            getRpcMaxConnections: 5,
+            getRpcMaxConnections: 10,
             timeoutPending: 5000,
             certPath: this.getDefaultCertPath(),
             keyPath: this.getDefaultKeyPath(),
             host: 'localhost',
             port: 8562,
-            chunkSize: 2000000,//2MB
+            chunkSize: 5000000,//5MB
             requestOptions: {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 rejectUnauthorized: false,
-                timeout: 5000
+                timeout: 30000
             },
         };
 
@@ -43,13 +45,25 @@ class ChiaDLFileStore extends EventEmitter {
         const homeDir = os.homedir();
         return path.join(homeDir, '.chia', 'mainnet', 'config', 'ssl', 'data_layer', 'private_data_layer.crt');
     }
-
     getDefaultKeyPath() {
         const homeDir = os.homedir();
         return path.join(homeDir, '.chia', 'mainnet', 'config', 'ssl', 'data_layer', 'private_data_layer.key');
     }
-    cancelInsertion() {
+    cancelProcess() {
         this.cancelFlag = true;
+    }
+    async deleteFile(idStore, fileName, fee = 0) {
+        try {
+            const requestBody = {
+                id: idStore,
+                key: this.stringToHex(fileName),
+                fee: fee
+            };
+            const result = await this.call('delete_key', requestBody);
+            return result;
+        } catch (error) {
+            return { success: false, error: 'Error', dataError: error };
+        }
     }
     async getFileList(idStore) {
         try {
@@ -88,8 +102,7 @@ class ChiaDLFileStore extends EventEmitter {
             return [];
         }
     }
-
-    async getFile(idStore, fileName) {
+    async getFileSingleThread(idStore, fileName) {
         try {
             let storedFile = await this.getKeValue(idStore, fileName);
 
@@ -136,15 +149,106 @@ class ChiaDLFileStore extends EventEmitter {
             });
 
             await Promise.all(promises);
-            if (fileContentChunks.length != totalParts) {
-                return { success: false, error: 'File incomplete...' + fileContentChunks.length + '/' + totalParts };
+            let totalPartsInChunks = fileContentChunks.filter(chunk => chunk !== null).length;
+            if (totalPartsInChunks != totalParts) {
+                return { success: false, error: 'File incomplete...' + totalPartsInChunks + '/' + totalParts };
             }
             const fullFileContent = fileContentChunks.join('');
 
 
-            return { success: true, message: 'File Loaded', bufferFile: fullFileContent };
+            return { success: true, message: 'File Loaded', hexFile: fullFileContent };
         } catch (error) {
             return { success: false, error: 'Error', dataError: error };
+        }
+    }
+    async getFile(idStore, fileName) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                let storedFile = await this.getKeValue(idStore, fileName);
+
+                if (!storedFile.success) {
+                    resolve(storedFile);
+                }
+                let infoFileParsed = JSON.parse(this.hexToString(storedFile.value));
+                const totalParts = infoFileParsed.totalParts;
+                const fileContentChunks = [];
+                let rootHistory = [];
+                fileContentChunks.push(infoFileParsed.hexData);
+                this.emit('logGetFile', fileName, infoFileParsed.partNumber, infoFileParsed.hexData, `Get ${infoFileParsed.totalParts == 1 ? 'Full' : 'Part'} file...` + infoFileParsed.partNumber + '/' + totalParts);
+                if (infoFileParsed.nextRootHash != null) {
+                    rootHistory = await this.getRootHistoryFile(idStore, infoFileParsed.nextRootHash, totalParts);
+                    if (rootHistory.length === 0) {
+                        resolve({ success: false, error: 'Root History not found' });
+                    }
+                }
+                if (rootHistory.length === 0 && totalParts === 1) {
+                    resolve({ success: true, message: 'File Loaded', hexFile: infoFileParsed.hexData });
+                    return;
+                }
+                if (rootHistory.length === 0 && totalParts > 1) {
+                    resolve({ success: false, error: 'Root History not found' });
+                    return;
+                }
+                const concurrencyLimit = this.config.getRpcMaxConnections;
+                let activeConnections = 0;
+                const workerScriptPath = path.join(__dirname, 'getChunkWorker.js');
+                const workers = [];
+                let responseCount = 0;
+                const handleResponse = (workerIndex, message) => {
+                    responseCount++;
+                    activeConnections--;
+                    fileContentChunks[message.partNumber - 1] = message.success ?  message.hexData: null;
+                    if (message.success === true) {
+                        this.emit('logGetFile', fileName, message.partNumber, message.hexData, 'Get Part file...' + fileContentChunks.filter(chunk => chunk !== null).length + '/' + totalParts);
+                    }
+                    workers[workerIndex].terminate();
+                    if(responseCount === rootHistory.length) {
+                        let totalPartsInChunks = fileContentChunks.filter(chunk => chunk !== null).length;
+                        if (totalPartsInChunks != totalParts) {
+                            resolve({ success: false, error: 'File incomplete...' + totalPartsInChunks + '/' + totalParts });
+                            return;
+                        }
+                        const fullFileContent = fileContentChunks.join('');
+                        resolve({ success: true, message: 'File Loaded', hexFile: fullFileContent });
+                    }
+                };
+
+                for (let i = 0; i < rootHistory.length; i++) {
+                    while (activeConnections >= concurrencyLimit) {
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        if (this.cancelFlag) {
+                            this.terminateWorkers(workers);
+                            resolve({ success: false, error: 'Canceled by user' });
+                        }
+                    }
+                    const worker = new Worker(workerScriptPath);
+                    workers.push(worker);
+
+                    worker.on('message', message => {
+                        handleResponse(i, message);
+                    });
+                    worker.on('error', error => {
+                        handleResponse(i, { success: false, error: error.message ?? error });
+                    });
+                    let rootHash = rootHistory[i].root_hash;
+                    worker.postMessage({idStore, fileName, rootHash});
+                    activeConnections++;
+                }
+
+            }
+            catch (error) {
+                resolve({ success: false, error: error.message ?? error });
+            }
+        });
+    }
+    terminateWorkers(workers) {
+
+        for (let i = 0; i < workers.length; i++) {
+            try {
+                workers[i].terminate();
+            } catch (error) {
+
+            }
         }
     }
     hexToString = function (hex) {
@@ -164,30 +268,6 @@ class ChiaDLFileStore extends EventEmitter {
         }
 
         return hexString;
-    }
-    async getChunk(IdVideo, Part, TotalChunks, AppPath = app.getAppPath()) {
-        let RootHistory = await this.DL.getRootHistory(IdVideo);
-        if (RootHistory.root_history !== undefined && RootHistory.root_history.length - 1 >= Part) {
-            let Parameters = {
-                "id": IdVideo,
-                "key": this.Util.stringToHex(`VideoChunk`),
-                "root_hash": RootHistory.root_history[Part].root_hash
-            };
-            const folderPath = path.join(AppPath, 'temp', "CurrentPlayer");
-            this.Util.ensureFolderExists(folderPath);
-            const filePath = path.join(folderPath, RootHistory.root_history[Part].root_hash + '_Part' + Part + '_p.json');
-            await this.Util.createTempJsonFile(Parameters, filePath, AppPath);
-            let Response = await this.DL.getValue(filePath, AppPath);
-            if (Response.value !== undefined) {
-                Response.value = this.Util.hexToString(Response.value);
-                const indexPipe = Response.value.indexOf("|");
-                const chunkName = Response.value.substring(0, indexPipe);
-                Response.value = Response.value.substring(indexPipe + 1);
-                console.log(`Chunk ${Part} ${chunkName} de ${TotalChunks} obtenido`);
-                return this.Util.stringToHex(Response.value);
-            }
-        }
-        return null;
     }
     async call(endPoint, requestBody = {}) {
         if (typeof requestBody.fee === 'undefined') {
@@ -367,6 +447,9 @@ class ChiaDLFileStore extends EventEmitter {
                 if (resultBatch.success === false)
                     return { success: false, error: 'Error batch...' + (totalParts - partNumber + 1 + '/' + totalParts) + " " + resultBatch.error ?? '' };
                 this.emit('logInsertFile', fileName, partNumber, 'Insert Part file...' + (totalParts - partNumber + 1) + '/' + totalParts);
+            }
+            if (partNumber !== 0){
+                return { success: false, error: 'Error batch...' + (totalParts - partNumber + 1 + '/' + totalParts) + " " + resultBatch };
             }
             return { success: true, message: 'File stored in data layer' };
 
