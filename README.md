@@ -189,10 +189,13 @@ const fs = require('fs');
 
 async function getFileExample() {
     const fileStore = new ChiaDLFileStore();
+    fileStore.on('logGetFile', (fileName, partNumber, hexData, message) => {
+        console.log(`log Part ${partNumber} of ${fileName}: ${message}`);
 
+    });
     try {
         const idStore = '2feb86ae33d70bfec5662a6ddac515542002e8afddffb91a06aeae9d5e68e07d';
-        const fileName = 'FILENAME.ANYTHING';
+        const fileName = 'YOUR_FILE_NAME_HERE';
         const result = await fileStore.getFile(idStore, fileName);
 
         if (result.success === true) {
@@ -210,7 +213,7 @@ async function getFileExample() {
 getFileExample();
 ```
 ### Delete File
-```
+```javascript
 const ChiaDLFileStore = require('chia-dl-file-store');
 
 async function deleteFileExample() {
@@ -234,7 +237,7 @@ deleteFileExample();
 
 ```
 ### Cancel Process insertFile / getFile 
-```
+```javascript
 const ChiaDLFileStore = require('chia-dl-file-store');
 
 async function cancelProcessExample() {
@@ -252,7 +255,7 @@ cancelProcessExample();
 ```
 
 ### Create Store
-```
+```javascript
 const ChiaDLFileStore = require('chia-dl-file-store');
 
 async function createDataStoreExample() {
