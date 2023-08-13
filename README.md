@@ -122,7 +122,6 @@ fileStore.on('logInsertFile', (fileName, partNumber, message) => {
 });
 ```
 
-```markdown
 ## Examples
 
 ### Retrieve File List
@@ -131,11 +130,11 @@ fileStore.on('logInsertFile', (fileName, partNumber, message) => {
 const ChiaDLFileStore = require('ChiaDLFileStore');
 
 async function getFileListExample() {
-    const tool = new ChiaDLFileStore();
+    const fileStore = new ChiaDLFileStore();
     
     try {
         const idStore = '2feb86ae33d70bfec5662a6ddac515542002e8afddffb91a06aeae9d5e68e07d';
-        const result = await tool.getFileList(idStore);
+        const result = await fileStore.getFileList(idStore);
         console.log(result);
     } catch (error) {
         console.error('Error:', error.message);
@@ -152,13 +151,13 @@ const ChiaDLFileStore = require('ChiaDLFileStore');
 const path = require('path');
 
 async function insertFileExample() {
-    const tool = new ChiaDLFileStore();
+    const fileStore = new ChiaDLFileStore();
     
     try {
         const idStore = '2feb86ae33d70bfec5662a6ddac515542002e8afddffb91a06aeae9d5e68e07d';
         const filePath = "/PATH-TO-FILE.ANYTHING";
         const fee = 100;
-        const result = await tool.insertFile(idStore, filePath, fee);
+        const result = await fileStore.insertFile(idStore, filePath, fee);
         console.log(result);
     } catch (error) {
         console.error('Error:', error.message);
@@ -176,12 +175,12 @@ const path = require('path');
 const fs = require('fs');
 
 async function retrieveFileExample() {
-    const tool = new ChiaDLFileStore();
+    const fileStore = new ChiaDLFileStore();
 
     try {
         const idStore = '2feb86ae33d70bfec5662a6ddac515542002e8afddffb91a06aeae9d5e68e07d';
         const fileName = 'FILENAME.ANYTHING';
-        const result = await tool.getFile(idStore, fileName);
+        const result = await fileStore.getFile(idStore, fileName);
 
         if (result.success === true) {
             const filePath = path.join(__dirname, fileName);
